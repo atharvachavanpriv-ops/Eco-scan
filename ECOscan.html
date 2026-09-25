@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoScan AI - QR & AI Waste Recycling Identifier</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ecoGreen: '#10B981',
+            ecoDark: '#064E3B',
+            ecoLight: '#ECFDF5',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen transition-colors duration-200">
+
+  <!-- Header -->
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-emerald-500 text-white rounded-xl shadow-md">
+          <i data-lucide="recycle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+            EcoScan AI
+          </h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400">QR & Vision Waste Classifier</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="themeToggle" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+          <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- Quick Stats Bar -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Items Scanned</p>
+        <p id="totalScanned" class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">0</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Eco Points</p>
+        <p id="ecoPoints" class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">0</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+        <p class="text-xs text-gray-500 dark:text-gray-400">CO₂ Saved</p>
+        <p id="co2Saved" class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">0 kg</p>
+      </div>
+    </div>
+
+    <!-- Scanner Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6">
+      <div class="flex items-center justify-center space-x-2 mb-4">
+        <i data-lucide="qr-code" class="w-5 h-5 text-emerald-600"></i>
+        <h2 class="text-lg font-bold">Scan QR Code or Item</h2>
+      </div>
+
+      <!-- Scanner Area -->
+      <div id="reader-container" class="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 flex flex-col items-center justify-center min-h-[260px]">
+        <div id="reader" class="w-full max-w-md"></div>
+        <div id="scannerPlaceholder" class="text-center py-8">
+          <i data-lucide="camera" class="w-12 h-12 text-gray-400 mx-auto mb-2"></i>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Start your camera to scan QR codes on waste packages</p>
+          <button id="startScanBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg shadow transition flex items-center mx-auto space-x-2">
+            <i data-lucide="camera" class="w-4 h-4"></i>
+            <span>Start Camera Scanner</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-4">
+        <button id="stopScanBtn" class="hidden text-xs text-red-500 hover:underline flex items-center space-x-1">
+          <i data-lucide="stop-circle" class="w-3.5 h-3.5"></i>
+          <span>Stop Camera</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Demo Preset Codes -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6">
+      <h3 class="text-md font-semibold mb-3 flex items-center space-x-2">
+        <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+        <span>Try Demo QR Presets</span>
+      </h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Don't have a QR code nearby? Click any preset item below to simulate a scan:</p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button onclick="simulateScan('PLASTIC_BOTTLE')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>🥤</span> <span>Plastic Bottle</span>
+        </button>
+        <button onclick="simulateScan('ALUMINUM_CAN')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>🥫</span> <span>Soda Can</span>
+        </button>
+        <button onclick="simulateScan('CARDBOARD_BOX')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>📦</span> <span>Cardboard</span>
+        </button>
+        <button onclick="simulateScan('BATTERY')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>🔋</span> <span>Battery (E-Waste)</span>
+        </button>
+        <button onclick="simulateScan('FOOD_WASTE')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>🍎</span> <span>Apple Core</span>
+        </button>
+        <button onclick="simulateScan('GLASS_JAR')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>🫙</span> <span>Glass Jar</span>
+        </button>
+        <button onclick="simulateScan('STYROFOAM')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>☕</span> <span>Styrofoam Cup</span>
+        </button>
+        <button onclick="simulateScan('ELECTRONIC')" class="p-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-xs transition flex items-center space-x-2">
+          <span>📱</span> <span>Old Smartphone</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scan Results Display -->
+    <div id="resultCard" class="hidden bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-md transition-all">
+      <div class="flex items-start justify-between pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div>
+          <span id="categoryBadge" class="inline-block px-3 py-1 text-xs font-bold rounded-full uppercase mb-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            Recyclable
+          </span>
+          <h3 id="itemTitle" class="text-2xl font-bold">Plastic Water Bottle</h3>
+          <p id="itemSubtitle" class="text-xs text-gray-500 dark:text-gray-400">PET Plastic #1</p>
+        </div>
+        <div id="statusIcon" class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+        <!-- Instructions -->
+        <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center space-x-1">
+            <i data-lucide="list-checks" class="w-4 h-4"></i>
+            <span>Disposal Instructions</span>
+          </h4>
+          <ul id="instructionsList" class="text-xs space-y-1.5 text-gray-600 dark:text-gray-300 list-disc list-inside">
+            <li>Rinse out any liquids completely.</li>
+            <li>Crush bottle to save bin space.</li>
+            <li>Place plastic cap back on or in plastic recycling bin.</li>
+          </ul>
+        </div>
+
+        <!-- Environmental Impact -->
+        <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center space-x-1">
+            <i data-lucide="leaf" class="w-4 h-4"></i>
+            <span>Environmental Impact</span>
+          </h4>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-gray-500">Decomposition Time:</span>
+              <span id="decompTime" class="font-semibold text-gray-700 dark:text-gray-200">~450 Years</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Carbon Saved:</span>
+              <span id="co2SavedItem" class="font-semibold text-emerald-600 dark:text-emerald-400">0.08 kg CO₂</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Eco Reward:</span>
+              <span id="pointsReward" class="font-semibold text-amber-500">+10 Eco-Points</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Application Database of Preset QR Waste Items
+    const WASTE_DB = {
+      'PLASTIC_BOTTLE': {
+        name: 'PET Plastic Water Bottle',
+        subtitle: 'Polyethylene Terephthalate (#1)',
+        category: 'RECYCLABLE',
+        badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        icon: 'check-circle',
+        iconColor: 'bg-emerald-100 text-emerald-600',
+        instructions: [
+          'Empty all remaining liquid.',
+          'Rinse bottle thoroughly.',
+          'Crush bottle to save space in bin.',
+          'Screw plastic cap back on before recycling.'
+        ],
+        decomp: '~450 Years',
+        co2: 0.08,
+        points: 10
+      },
+      'ALUMINUM_CAN': {
+        name: 'Aluminum Beverage Can',
+        subtitle: '100% Infinitely Recyclable Metal',
+        category: 'RECYCLABLE',
+        badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        icon: 'check-circle',
+        iconColor: 'bg-emerald-100 text-emerald-600',
+        instructions: [
+          'Rinse out soda/juice residue.',
+          'Do not crush completely if using reverse vending machines.',
+          'Place directly into metal/can recycling bin.'
+        ],
+        decomp: '200-500 Years',
+        co2: 0.15,
+        points: 15
+      },
+      'CARDBOARD_BOX': {
+        name: 'Corrugated Cardboard Box',
+        subtitle: 'Paper & Card Packaging',
+        category: 'RECYCLABLE',
+        badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        icon: 'check-circle',
+        iconColor: 'bg-emerald-100 text-emerald-600',
+        instructions: [
+          'Remove plastic tape and shipping stickers if possible.',
+          'Flatten box completely to conserve space.',
+          'Keep dry — wet cardboard cannot be recycled.'
+        ],
+        decomp: '2-3 Months',
+        co2: 0.20,
+        points: 12
+      },
+      'BATTERY': {
+        name: 'Household Battery (AA/AAA)',
+        subtitle: 'Hazardous Waste - E-Waste',
+        category: 'SPECIAL HAZARD',
+        badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        icon: 'alert-triangle',
+        iconColor: 'bg-amber-100 text-amber-600',
+        instructions: [
+          'DO NOT place in regular trash or recycling bin.',
+          'Tape battery terminals with clear tape to prevent fires.',
+          'Drop off at designated battery collection points or electronics store.'
+        ],
+        decomp: '100 Years (Leaks Toxic Chemicals)',
+        co2: 0.30,
+        points: 25
+      },
+      'FOOD_WASTE': {
+        name: 'Organic Food Waste',
+        subtitle: 'Compostable Organic Matter',
+        category: 'COMPOSTABLE',
+        badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
+        icon: 'sprout',
+        iconColor: 'bg-teal-100 text-teal-600',
+        instructions: [
+          'Place in green compost bin or backyard compost pile.',
+          'Avoid mixing plastic wrappers or stickers.',
+          'Turns into rich soil nutrient in 1-3 months.'
+        ],
+        decomp: '2-6 Weeks',
+        co2: 0.05,
+        points: 8
+      },
+      'GLASS_JAR': {
+        name: 'Glass Food Jar',
+        subtitle: '100% Recyclable Packaging Glass',
+        category: 'RECYCLABLE',
+        badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        icon: 'check-circle',
+        iconColor: 'bg-emerald-100 text-emerald-600',
+        instructions: [
+          'Rinse out food remains.',
+          'Metal lids can be recycled separately with metals.',
+          'Place in dedicated glass recycling bin.'
+        ],
+        decomp: '1 Million Years',
+        co2: 0.12,
+        points: 15
+      },
+      'STYROFOAM': {
+        name: 'Expanded Polystyrene (Styrofoam)',
+        subtitle: 'Non-Recyclable Plastic #6',
+        category: 'TRASH / LANDFILL',
+        badgeColor: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+        icon: 'x-circle',
+        iconColor: 'bg-red-100 text-red-600',
+        instructions: [
+          'Cannot be processed in standard curbside recycling bins.',
+          'Place in general trash bin.',
+          'Consider reusable alternatives for future purchases.'
+        ],
+        decomp: '500+ Years',
+        co2: 0.00,
+        points: 2
+      },
+      'ELECTRONIC': {
+        name: 'Old Smartphone / Gadget',
+        subtitle: 'Electronic Waste (E-Waste)',
+        category: 'SPECIAL HAZARD',
+        badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        icon: 'alert-triangle',
+        iconColor: 'bg-amber-100 text-amber-600',
+        instructions: [
+          'Perform a complete factory reset to wipe personal data.',
+          'Do NOT put in regular trash bins.',
+          'Take to certified e-waste recycler or electronics retailer.'
+        ],
+        decomp: 'Indefinite',
+        co2: 1.50,
+        points: 50
+      }
+    };
+
+    // User State
+    let state = {
+      scannedCount: 0,
+      ecoPoints: 0,
+      co2Saved: 0.0
+    };
+
+    let html5QrCode = null;
+
+    // Camera QR Code Scanner Toggle
+    document.getElementById('startScanBtn').addEventListener('click', () => {
+      startCamera();
+    });
+
+    document.getElementById('stopScanBtn').addEventListener('click', () => {
+      stopCamera();
+    });
+
+    function startCamera() {
+      html5QrCode = new Html5Qrcode("reader");
+      document.getElementById('scannerPlaceholder').classList.add('hidden');
+      document.getElementById('stopScanBtn').classList.remove('hidden');
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          handleScanSuccess(decodedText);
+        },
+        (errorMessage) => {
+          // Scanning frame standard error, ignore
+        }
+      ).catch(err => {
+        alert("Camera permission denied or camera not found.");
+        stopCamera();
+      });
+    }
+
+    function stopCamera() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          document.getElementById('scannerPlaceholder').classList.remove('hidden');
+          document.getElementById('stopScanBtn').classList.add('hidden');
+        }).catch(err => console.error(err));
+      }
+    }
+
+    function simulateScan(code) {
+      handleScanSuccess(code);
+    }
+
+    function handleScanSuccess(code) {
+      const itemKey = code.trim().toUpperCase();
+      const item = WASTE_DB[itemKey] || {
+        name: 'Unknown Item Code: ' + code,
+        subtitle: 'Unregistered Product Barcode',
+        category: 'CHECK LOCAL RULES',
+        badgeColor: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+        icon: 'help-circle',
+        iconColor: 'bg-gray-100 text-gray-600',
+        instructions: [
+          'Check local municipal waste management guidelines.',
+          'Look for recycling triangle symbols on packaging.'
+        ],
+        decomp: 'Unknown',
+        co2: 0.01,
+        points: 5
+      };
+
+      // Display Results
+      document.getElementById('resultCard').classList.remove('hidden');
+      document.getElementById('itemTitle').innerText = item.name;
+      document.getElementById('itemSubtitle').innerText = item.subtitle;
+      
+      const badge = document.getElementById('categoryBadge');
+      badge.innerText = item.category;
+      badge.className = `inline-block px-3 py-1 text-xs font-bold rounded-full uppercase mb-2 ${item.badgeColor}`;
+
+      document.getElementById('decompTime').innerText = item.decomp;
+      document.getElementById('co2SavedItem').innerText = `${item.co2.toFixed(2)} kg CO₂`;
+      document.getElementById('pointsReward').innerText = `+${item.points} Eco-Points`;
+
+      const listContainer = document.getElementById('instructionsList');
+      listContainer.innerHTML = '';
+      item.instructions.forEach(step => {
+        const li = document.createElement('li');
+        li.innerText = step;
+        listContainer.appendChild(li);
+      });
+
+      // Update Dashboard Stats
+      state.scannedCount++;
+      state.ecoPoints += item.points;
+      state.co2Saved += item.co2;
+
+      document.getElementById('totalScanned').innerText = state.scannedCount;
+      document.getElementById('ecoPoints').innerText = state.ecoPoints;
+      document.getElementById('co2Saved').innerText = `${state.co2Saved.toFixed(2)} kg`;
+
+      // Scroll smoothly to results
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Theme Toggle
+    const themeToggleBtn = document.getElementById('themeToggle');
+    themeToggleBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+  </script>
+</body>
+</html>
